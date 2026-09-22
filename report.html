@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retail Operations Intelligence — Sales, Returns & Inventory</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+  :root {
+    --bg: #f6f7f9; --surface: #ffffff; --border: #e5e7eb;
+    --text: #111827; --muted: #6b7280;
+    --primary: #1a56db; --primary-soft: #e8effc;
+    --neg: #dc2626; --pos: #059669; --warn: #d97706;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
+  header.hero { background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: #fff;
+    border-radius: 14px; padding: 36px 32px; margin-bottom: 24px; }
+  header.hero h1 { font-size: 26px; font-weight: 700; letter-spacing: .2px; }
+  header.hero p { margin-top: 8px; color: #c7d2fe; font-size: 14px; line-height: 1.6; max-width: 720px; }
+  header.hero .tag { display: inline-block; margin-top: 14px; background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.25); padding: 4px 12px; border-radius: 999px; font-size: 12px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .kpi .label { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+  .kpi .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  .kpi .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .kpi.alert .value { color: var(--neg); }
+  .kpi.good .value { color: var(--pos); }
+  section.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 22px; margin-bottom: 20px; }
+  section.card h2 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  section.card p.desc { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  .chartbox { position: relative; height: 300px; }
+  .chartbox.tall { height: 360px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 10px; background: var(--primary-soft); color: #1e3a8a;
+    font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge.red { background: #fee2e2; color: #991b1b; }
+  .badge.green { background: #d1fae5; color: #065f46; }
+  .badge.amber { background: #fef3c7; color: #92400e; }
+  .insight { background: var(--primary-soft); border-left: 3px solid var(--primary);
+    padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.6; margin-top: 16px; }
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 30px; line-height: 1.7; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+  nav a { font-size: 12px; text-decoration: none; color: var(--primary); background: var(--surface);
+    border: 1px solid var(--border); padding: 6px 12px; border-radius: 999px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>Retail Operations Intelligence: Sales, Returns &amp; Inventory</h1>
+  <p>End-to-end business health analysis of an e-commerce operation — 2020-01-01 00:00:00 to 2024-07-30 00:00:00 across a 9-table
+  relational schema (orders, payments, shipments, returns, inventory). Every figure below was computed with SQL
+  (PostgreSQL) and cross-verified against an independent implementation.</p>
+  <span class="tag">SQL &middot; PostgreSQL &middot; 21,629 orders &middot; ~88,500 records</span>
+</header>
+
+<nav>
+  <a href="#revenue">Revenue</a><a href="#payments">Payments</a><a href="#shipping">Shipping</a>
+  <a href="#returns">Returns</a><a href="#products">Products</a><a href="#customers">Customers</a>
+  <a href="#inventory">Inventory</a>
+</nav>
+
+<div class="kpis">
+  <div class="kpi"><div class="label">Total revenue</div><div class="value">$12,642,071</div><div class="sub">Jan 2020 – Jul 2024</div></div>
+  <div class="kpi"><div class="label">Orders</div><div class="value">21,629</div><div class="sub">686 active customers</div></div>
+  <div class="kpi"><div class="label">Avg order value</div><div class="value">$584</div><div class="sub">across all orders</div></div>
+  <div class="kpi alert"><div class="label">Return rate</div><div class="value">13.4%</div><div class="sub">of all shipments</div></div>
+  <div class="kpi alert"><div class="label">Delayed shipments</div><div class="value">40%</div><div class="sub">shipped &gt;3 days after order</div></div>
+  <div class="kpi alert"><div class="label">Never purchased</div><div class="value">212</div><div class="sub">of 898 registered (24%)</div></div>
+</div>
+
+<section class="card" id="revenue">
+  <h2>Revenue trend</h2>
+  <p class="desc">Monthly revenue across the full 4.5-year history. 2024 covers January–July only (partial year).</p>
+  <div class="chartbox tall"><canvas id="cMonthly"></canvas></div>
+  <div class="insight"><b>Finding:</b> revenue is stable-to-growing through 2023, then drops sharply in 2024 —
+  the partial year (Jan–Jul only) plus a near-total collapse from March onward, well beyond what a partial year explains.</div>
+</section>
+
+<section class="card">
+  <div class="grid2">
+    <div>
+      <h2>Revenue by category</h2>
+      <p class="desc">Share of total revenue by product category.</p>
+      <div class="chartbox"><canvas id="cCategory"></canvas></div>
+      <div class="insight"><b>Finding:</b> electronics account for <b>89.7%</b> of all revenue — extreme category concentration.
+      The biggest risk to this business is operational (returns, delays), not demand diversity.</div>
+    </div>
+    <div>
+      <h2>Yearly revenue</h2>
+      <p class="desc">Total revenue per year (2024 = 7 months).</p>
+      <div class="chartbox"><canvas id="cYearly"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<section class="card" id="payments">
+  <h2>Payment health</h2>
+  <p class="desc">Distribution of payment outcomes across all 21,629 payments.</p>
+  <div class="grid2">
+    <div class="chartbox"><canvas id="cPayment"></canvas></div>
+    <div class="chartbox"><canvas id="cOrder"></canvas></div>
+  </div>
+  <div class="insight"><b>Finding:</b> 84.6% of payments succeed, but <b>13.1% are refunded</b> and 2.3% fail —
+  the refund share mirrors the 13.4% return rate, confirming returns are the primary revenue leak.</div>
+</section>
+
+<section class="card" id="shipping">
+  <h2>Shipping performance by provider</h2>
+  <p class="desc">Delay rate = shipments sent more than 3 days after the order date. Delivered rate = final delivery status.</p>
+  <table id="tShipping"><thead><tr>
+    <th>Provider</th><th class="num">Shipments</th><th class="num">Revenue handled</th>
+    <th class="num">Delay rate</th><th class="num">Delivered rate</th></tr></thead><tbody></tbody></table>
+  <div class="chartbox" style="margin-top:16px"><canvas id="cShipping"></canvas></div>
+  <div class="insight"><b>Finding:</b> <b>40% of all shipments are delayed</b> beyond 3 days (8,452 of 21,161).
+  FedEx handles the most volume and revenue but also the most delayed shipments (5,779).</div>
+</section>
+
+<section class="card" id="returns">
+  <h2>Returns by category</h2>
+  <p class="desc">Units returned as a share of units sold, per category.</p>
+  <div class="chartbox"><canvas id="cReturns"></canvas></div>
+</section>
+
+<section class="card" id="products">
+  <h2>Product performance</h2>
+  <div class="grid2">
+    <div>
+      <h3 style="font-size:14px;margin-bottom:12px">Top 10 products by revenue</h3>
+      <table id="tProducts"><thead><tr><th>Product</th><th class="num">Revenue</th><th class="num">Orders</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div>
+      <h3 style="font-size:14px;margin-bottom:12px">Steepest revenue declines (2022 → 2023)</h3>
+      <table id="tDecline"><thead><tr><th>Product</th><th class="num">2022</th><th class="num">2023</th><th class="num">Change</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+</section>
+
+<section class="card" id="customers">
+  <h2>Customer analytics</h2>
+  <p class="desc">Customer lifetime value (CLTV) = total value of all orders placed. Top 10 shown.</p>
+  <table id="tCustomers"><thead><tr>
+    <th>Customer</th><th>State</th><th class="num">Orders</th><th class="num">CLTV</th></tr></thead><tbody></tbody></table>
+  <div class="insight"><b>Finding:</b> the top 10 customers are worth <b>$1,875,588</b> combined —
+  and 212 registered customers (24%) have never purchased, making reactivation the cheapest growth lever available.</div>
+</section>
+
+<section class="card" id="inventory">
+  <h2>Inventory alerts</h2>
+  <p class="desc">51 products are below the 10-unit stock threshold. 15 most critical shown.</p>
+  <table id="tStock"><thead><tr>
+    <th>Product</th><th class="num">Stock left</th><th class="num">Warehouse</th><th class="num">Last restock</th></tr></thead><tbody></tbody></table>
+</section>
+
+<footer>
+  Retail Operations Intelligence &middot; SQL / PostgreSQL project by Meenakshi Sethi<br>
+  Synthetic Amazon-like e-commerce dataset (~88,500 records, Jan 2020 – Jul 2024) &middot;
+  All figures computed with SQL and cross-verified &middot; Queries: <b>solutions.sql</b> in this repo
+</footer>
+</div>
+
+<script>
+const DATA = {"kpi": {"orders": 21629, "active_customers": 686, "total_customers": 898, "revenue": 12642071.0, "aov": 584.5, "products": 765, "sellers": 54}, "date_range": {"min": "2020-01-01 00:00:00", "max": "2024-07-30 00:00:00"}, "category_revenue": [{"category_name": "electronics", "rev": 11343910.0, "pct": 89.7}, {"category_name": "Sports & Outdoors", "rev": 457463.0, "pct": 3.6}, {"category_name": "Toys & Games", "rev": 354166.0, "pct": 2.8}, {"category_name": "Pet Supplies", "rev": 262479.0, "pct": 2.1}, {"category_name": "clothing", "rev": 133776.0, "pct": 1.1}, {"category_name": "home & kitchen", "rev": 90278.0, "pct": 0.7}], "monthly_trend": [{"ym": "2020-01", "rev": 167935.0, "roll_avg": 167935.0}, {"ym": "2020-02", "rev": 177543.0, "roll_avg": 172739.0}, {"ym": "2020-03", "rev": 223590.0, "roll_avg": 189689.33}, {"ym": "2020-04", "rev": 191773.0, "roll_avg": 197635.33}, {"ym": "2020-05", "rev": 185879.0, "roll_avg": 200414.0}, {"ym": "2020-06", "rev": 214901.0, "roll_avg": 197517.67}, {"ym": "2020-07", "rev": 198343.0, "roll_avg": 199707.67}, {"ym": "2020-08", "rev": 189219.0, "roll_avg": 200821.0}, {"ym": "2020-09", "rev": 233401.0, "roll_avg": 206987.67}, {"ym": "2020-10", "rev": 211937.0, "roll_avg": 211519.0}, {"ym": "2020-11", "rev": 206106.0, "roll_avg": 217148.0}, {"ym": "2020-12", "rev": 233192.0, "roll_avg": 217078.33}, {"ym": "2021-01", "rev": 186851.0, "roll_avg": 208716.33}, {"ym": "2021-02", "rev": 205904.0, "roll_avg": 208649.0}, {"ym": "2021-03", "rev": 272791.0, "roll_avg": 221848.67}, {"ym": "2021-04", "rev": 302043.0, "roll_avg": 260246.0}, {"ym": "2021-05", "rev": 339878.0, "roll_avg": 304904.0}, {"ym": "2021-06", "rev": 346956.0, "roll_avg": 329625.67}, {"ym": "2021-07", "rev": 353722.0, "roll_avg": 346852.0}, {"ym": "2021-08", "rev": 296695.0, "roll_avg": 332457.67}, {"ym": "2021-09", "rev": 375905.0, "roll_avg": 342107.33}, {"ym": "2021-10", "rev": 215866.0, "roll_avg": 296155.33}, {"ym": "2021-11", "rev": 223650.0, "roll_avg": 271807.0}, {"ym": "2021-12", "rev": 229428.0, "roll_avg": 222981.33}, {"ym": "2022-01", "rev": 214133.0, "roll_avg": 222403.67}, {"ym": "2022-02", "rev": 164456.0, "roll_avg": 202672.33}, {"ym": "2022-03", "rev": 238097.0, "roll_avg": 205562.0}, {"ym": "2022-04", "rev": 336594.0, "roll_avg": 246382.33}, {"ym": "2022-05", "rev": 299015.0, "roll_avg": 291235.33}, {"ym": "2022-06", "rev": 281862.0, "roll_avg": 305823.67}, {"ym": "2022-07", "rev": 289400.0, "roll_avg": 290092.33}, {"ym": "2022-08", "rev": 308318.0, "roll_avg": 293193.33}, {"ym": "2022-09", "rev": 323419.0, "roll_avg": 307045.67}, {"ym": "2022-10", "rev": 172335.0, "roll_avg": 268024.0}, {"ym": "2022-11", "rev": 264368.0, "roll_avg": 253374.0}, {"ym": "2022-12", "rev": 225955.0, "roll_avg": 220886.0}, {"ym": "2023-01", "rev": 212694.0, "roll_avg": 234339.0}, {"ym": "2023-02", "rev": 220647.0, "roll_avg": 219765.33}, {"ym": "2023-03", "rev": 314383.0, "roll_avg": 249241.33}, {"ym": "2023-04", "rev": 332110.0, "roll_avg": 289046.67}, {"ym": "2023-05", "rev": 341233.0, "roll_avg": 329242.0}, {"ym": "2023-06", "rev": 280407.0, "roll_avg": 317916.67}, {"ym": "2023-07", "rev": 288751.0, "roll_avg": 303463.67}, {"ym": "2023-08", "rev": 365034.0, "roll_avg": 311397.33}, {"ym": "2023-09", "rev": 335640.0, "roll_avg": 329808.33}, {"ym": "2023-10", "rev": 227458.0, "roll_avg": 309377.33}, {"ym": "2023-11", "rev": 189294.0, "roll_avg": 250797.33}, {"ym": "2023-12", "rev": 185236.0, "roll_avg": 200662.67}, {"ym": "2024-01", "rev": 260913.0, "roll_avg": 211814.33}, {"ym": "2024-02", "rev": 100070.0, "roll_avg": 182073.0}, {"ym": "2024-03", "rev": 11961.0, "roll_avg": 124314.67}, {"ym": "2024-04", "rev": 13839.0, "roll_avg": 41956.67}, {"ym": "2024-05", "rev": 25378.0, "roll_avg": 17059.33}, {"ym": "2024-06", "rev": 9564.0, "roll_avg": 16260.33}, {"ym": "2024-07", "rev": 25998.0, "roll_avg": 20313.33}], "yearly_revenue": [{"yr": 2020, "rev": 2433819.0, "orders": 3581}, {"yr": 2021, "rev": 3349689.0, "orders": 5635}, {"yr": 2022, "rev": 3117952.0, "orders": 5478}, {"yr": 2023, "rev": 3292888.0, "orders": 5784}, {"yr": 2024, "rev": 447723.0, "orders": 1151}], "payment_status": [{"payment_status": "Payment Successed", "cnt": 18301, "pct": 84.6}, {"payment_status": "Refunded ", "cnt": 2840, "pct": 13.1}, {"payment_status": "Payment Failed", "cnt": 488, "pct": 2.3}], "order_status": [{"order_status": "Completed", "cnt": 17802, "pct": 82.3}, {"order_status": "Returned", "cnt": 2840, "pct": 13.1}, {"order_status": "Inprogress", "cnt": 499, "pct": 2.3}, {"order_status": "Cancelled", "cnt": 488, "pct": 2.3}], "shipping": [{"provider": "fedex", "shipments": 14346, "delayed": 5779.0, "delay_pct": 40.3, "delivered_pct": 100.0, "revenue": 8352946.0}, {"provider": "dhl", "shipments": 4403, "delayed": 1705.0, "delay_pct": 38.7, "delivered_pct": 78.5, "revenue": 2601748.0}, {"provider": "bluedart", "shipments": 2392, "delayed": 968.0, "delay_pct": 40.5, "delivered_pct": 0.0, "revenue": 1379152.0}], "overall_delay_pct": 40.0, "returns_by_category": [{"category_name": "electronics", "units_sold": 14531.0, "units_returned": 1966.0, "return_pct": 13.5}, {"category_name": "home & kitchen", "units_sold": 2316.0, "units_returned": 307.0, "return_pct": 13.3}, {"category_name": "Toys & Games", "units_sold": 6641.0, "units_returned": 865.0, "return_pct": 13.0}, {"category_name": "Sports & Outdoors", "units_sold": 7821.0, "units_returned": 966.0, "return_pct": 12.4}, {"category_name": "Pet Supplies", "units_sold": 7623.0, "units_returned": 930.0, "return_pct": 12.2}, {"category_name": "clothing", "units_sold": 2912.0, "units_returned": 318.0, "return_pct": 10.9}], "top_products": [{"product_name": "Apple iMac Pro", "rev": 629999.0, "orders": 120}, {"product_name": "Apple iMac 27-Inch Retina", "rev": 232199.0, "orders": 115}, {"product_name": "Canon EOS R5 Mirrorless Camera", "rev": 222299.0, "orders": 41}, {"product_name": "Apple iMac 24-Inch", "rev": 189799.0, "orders": 133}, {"product_name": "Apple MacBook Pro 16-inch", "rev": 187499.0, "orders": 65}, {"product_name": "Dell Alienware Aurora R13", "rev": 177499.0, "orders": 63}, {"product_name": "Apple MacBook Pro 16-inch (2021)", "rev": 162499.0, "orders": 54}, {"product_name": "Dell XPS 17 Laptop", "rev": 157499.0, "orders": 68}, {"product_name": "Sony A7R IV Mirrorless Camera", "rev": 155100.0, "orders": 40}, {"product_name": "Canon EOS R6 Mirrorless Camera", "rev": 144999.0, "orders": 44}], "declining_products": [{"product_id": 351, "product_name": "Unisex Sports Cap", "last_year": 271.84, "current_year": 16.99, "change_pct": -93.8}, {"product_id": 252, "product_name": "HP Spectre x360 13 Laptop", "last_year": 14299.89, "current_year": 1299.99, "change_pct": -90.9}, {"product_id": 593, "product_name": "Magic Set", "last_year": 329.89, "current_year": 29.99, "change_pct": -90.9}, {"product_id": 370, "product_name": "Women's Long Sleeve Shirt", "last_year": 269.91, "current_year": 29.99, "change_pct": -88.9}, {"product_id": 168, "product_name": "DJI Osmo Pocket 2", "last_year": 5399.82, "current_year": 599.98, "change_pct": -88.9}, {"product_id": 571, "product_name": "Dumbbell Set", "last_year": 719.91, "current_year": 79.99, "change_pct": -88.9}, {"product_id": 570, "product_name": "Yoga Mat", "last_year": 314.91, "current_year": 34.99, "change_pct": -88.9}, {"product_id": 580, "product_name": "Pet Shampoo", "last_year": 254.83, "current_year": 29.98, "change_pct": -88.2}, {"product_id": 579, "product_name": "Dog Bed", "last_year": 349.93, "current_year": 49.99, "change_pct": -85.7}, {"product_id": 380, "product_name": "Women's Quilted Vest", "last_year": 279.93, "current_year": 39.99, "change_pct": -85.7}], "top_customers": [{"cx_name": "Ella Scott", "state": "Ohio", "cltv": 229174.0, "orders": 344}, {"cx_name": "Wendy Reed", "state": "Ohio", "cltv": 226029.0, "orders": 387}, {"cx_name": "Mia Reed", "state": "Ohio", "cltv": 194484.0, "orders": 281}, {"cx_name": "Quinn Davis", "state": "Ohio", "cltv": 191296.0, "orders": 264}, {"cx_name": "Alicia Green", "state": "Ohio", "cltv": 182915.0, "orders": 289}, {"cx_name": "Kelly Green", "state": "Ohio", "cltv": 177552.0, "orders": 281}, {"cx_name": "Isabella Reed", "state": "Ohio", "cltv": 176333.0, "orders": 277}, {"cx_name": "Samuel Turner", "state": "Ohio", "cltv": 168860.0, "orders": 270}, {"cx_name": "Mia Davis", "state": "Ohio", "cltv": 165953.0, "orders": 249}, {"cx_name": "Isabella Davis", "state": "Ohio", "cltv": 162992.0, "orders": 300}], "customer_segments": [{"segment": "New", "customers": 656}, {"segment": "Returning", "customers": 30}], "never_purchased": 212, "stock_alerts": [{"product_name": "Pet GPS Tracker", "stock": 1, "warehouse_id": 1, "last_stock_date": "2023-10-10 00:00:00"}, {"product_name": "Children\u2019s Puzzle", "stock": 1, "warehouse_id": 1, "last_stock_date": "2023-02-23 00:00:00"}, {"product_name": "Pet Water Fountain", "stock": 1, "warehouse_id": 1, "last_stock_date": "2022-08-01 00:00:00"}, {"product_name": "Tennis Set", "stock": 1, "warehouse_id": 1, "last_stock_date": "2022-07-08 00:00:00"}, {"product_name": "Kid\u2019s Beach Tent", "stock": 1, "warehouse_id": 1, "last_stock_date": "2022-09-26 00:00:00"}, {"product_name": "Archery Set", "stock": 1, "warehouse_id": 1, "last_stock_date": "2022-07-05 00:00:00"}, {"product_name": "Sports Massage Roller", "stock": 1, "warehouse_id": 1, "last_stock_date": "2023-08-04 00:00:00"}, {"product_name": "Outdoor Playhouse", "stock": 2, "warehouse_id": 1, "last_stock_date": "2022-05-03 00:00:00"}, {"product_name": "Stuffed Animal Set", "stock": 2, "warehouse_id": 1, "last_stock_date": "2023-01-07 00:00:00"}, {"product_name": "Remote-Controlled Helicopter", "stock": 2, "warehouse_id": 1, "last_stock_date": "2023-06-27 00:00:00"}, {"product_name": "Magic Markers Set", "stock": 2, "warehouse_id": 1, "last_stock_date": "2023-02-21 00:00:00"}, {"product_name": "Pet Gate", "stock": 2, "warehouse_id": 1, "last_stock_date": "2022-05-17 00:00:00"}, {"product_name": "Dog Cooling Vest", "stock": 3, "warehouse_id": 1, "last_stock_date": "2022-12-05 00:00:00"}, {"product_name": "Sports Water Bottle", "stock": 3, "warehouse_id": 1, "last_stock_date": "2022-09-30 00:00:00"}, {"product_name": "Pet Raincoat", "stock": 3, "warehouse_id": 1, "last_stock_date": "2023-11-05 00:00:00"}], "stock_alerts_count": 51, "state_revenue": [{"state": "Ohio", "rev": 6872199.0}, {"state": "Texas", "rev": 2798080.0}, {"state": "New York", "rev": 320286.0}, {"state": "Oklahoma", "rev": 317003.0}, {"state": "Tennessee", "rev": 309445.0}, {"state": "California", "rev": 294848.0}, {"state": "South Dakota", "rev": 294011.0}, {"state": "Rhode Island", "rev": 286771.0}, {"state": "Pennsylvania", "rev": 274613.0}, {"state": "South Carolina", "rev": 269324.0}], "sellers": [{"seller_name": "AnkerDirect", "rev": 1736430.0, "orders": 2287, "completion_pct": 81.1}, {"seller_name": "Tech Armor", "rev": 1683915.0, "orders": 2153, "completion_pct": 81.3}, {"seller_name": "AmazonBasics", "rev": 1644364.0, "orders": 2095, "completion_pct": 81.8}, {"seller_name": "iSaddle", "rev": 1642954.0, "orders": 2169, "completion_pct": 83.2}, {"seller_name": "Ailun", "rev": 1568945.0, "orders": 2159, "completion_pct": 81.5}, {"seller_name": "Bissell", "rev": 285369.0, "orders": 593, "completion_pct": 81.3}, {"seller_name": "Shark", "rev": 259765.0, "orders": 586, "completion_pct": 82.1}, {"seller_name": "iRobot", "rev": 228935.0, "orders": 564, "completion_pct": 84.4}, {"seller_name": "Samsung Electronics", "rev": 226201.0, "orders": 548, "completion_pct": 82.1}, {"seller_name": "Sonos", "rev": 222637.0, "orders": 545, "completion_pct": 82.9}]};
+
+// ---- KPI fill ----
+document.querySelector('.kpi.alert:nth-child(4)'); // no-op guard
+
+// ---- tables ----
+const fmt = n => '$' + Number(n).toLocaleString('en-US', {maximumFractionDigits: 0});
+
+// shipping table
+const tbS = document.querySelector('#tShipping tbody');
+DATA.shipping.forEach(r => {
+  const delayBadge = r.delay_pct > 40 ? 'red' : (r.delay_pct > 20 ? 'amber' : 'green');
+  tbS.insertAdjacentHTML('beforeend',
+    `<tr><td>${r.provider}</td><td class="num">${r.shipments.toLocaleString()}</td>
+     <td class="num">${fmt(r.revenue)}</td>
+     <td class="num"><span class="badge ${delayBadge}">${r.delay_pct}%</span></td>
+     <td class="num">${r.delivered_pct}%</td></tr>`);
+});
+
+// top products
+const tbP = document.querySelector('#tProducts tbody');
+DATA.top_products.forEach(r => {
+  tbP.insertAdjacentHTML('beforeend',
+    `<tr><td>${r.product_name}</td><td class="num">${fmt(r.rev)}</td><td class="num">${r.orders}</td></tr>`);
+});
+
+// declining products
+const tbD = document.querySelector('#tDecline tbody');
+DATA.declining_products.forEach(r => {
+  tbD.insertAdjacentHTML('beforeend',
+    `<tr><td>${r.product_name}</td><td class="num">${fmt(r.last_year)}</td>
+     <td class="num">${fmt(r.current_year)}</td>
+     <td class="num"><span class="badge red">${r.change_pct}%</span></td></tr>`);
+});
+
+// customers
+const tbC = document.querySelector('#tCustomers tbody');
+DATA.top_customers.forEach(r => {
+  tbC.insertAdjacentHTML('beforeend',
+    `<tr><td>${r.cx_name}</td><td>${r.state}</td><td class="num">${r.orders}</td><td class="num">${fmt(r.cltv)}</td></tr>`);
+});
+
+// stock alerts
+const tbI = document.querySelector('#tStock tbody');
+DATA.stock_alerts.forEach(r => {
+  tbI.insertAdjacentHTML('beforeend',
+    `<tr><td>${r.product_name}</td><td class="num"><span class="badge red">${r.stock}</span></td>
+     <td class="num">${r.warehouse_id}</td><td class="num">${r.last_stock_date}</td></tr>`);
+});
+
+// ---- charts ----
+Chart.register(ChartDataLabels);
+Chart.defaults.font.family = "'Segoe UI', sans-serif";
+Chart.defaults.color = '#6b7280';
+// datalabels defaults to "on" for every chart once registered — opt it back out
+// globally, then turn it on explicitly only for the doughnut charts below.
+Chart.defaults.set('plugins.datalabels', { display: false });
+
+// Direct % labels for doughnut slices — only slices >= 4% get an on-chart label
+// (smaller slices stay legible via tooltip/legend instead of crowding the ring).
+const sharePctLabel = {
+  color: '#fff', font: { weight: '600', size: 12 },
+  formatter: (value, ctx) => {
+    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+    const pct = total ? (value / total) * 100 : 0;
+    return pct >= 4 ? pct.toFixed(1) + '%' : '';
+  }
+};
+const grid = {color: '#e5e7eb'};
+
+const monthlyRev = DATA.monthly_trend.map(r => r.rev);
+const monthlyAvg = DATA.monthly_trend.map(r => r.roll_avg);
+const peakIdx = monthlyRev.indexOf(Math.max(...monthlyRev));
+const lowIdx = monthlyRev.indexOf(Math.min(...monthlyRev));
+const extremeColor = i => i === peakIdx ? '#059669' : i === lowIdx ? '#dc2626' : '#1a56db';
+
+new Chart(cMonthly, {
+  type: 'line',
+  data: { labels: DATA.monthly_trend.map(r => r.ym),
+    datasets: [
+      { label: 'Monthly revenue', data: monthlyRev,
+        borderColor: '#1a56db', backgroundColor: 'rgba(26,86,219,.08)', fill: true,
+        tension: .3, borderWidth: 2,
+        // Only the peak and low months get a visible marker + label — every other
+        // point stays radius 0 so the line itself carries the trend, not dots.
+        pointRadius: (ctx) => [peakIdx, lowIdx].includes(ctx.dataIndex) ? 5 : 0,
+        pointBackgroundColor: (ctx) => extremeColor(ctx.dataIndex),
+        pointBorderColor: '#fff', pointBorderWidth: 2 },
+      // 3-month trailing average — the smoothed line that shows whether the
+      // underlying trend is climbing or falling, since the raw series is too
+      // noisy month-to-month to eyeball direction from.
+      { label: '3-month avg', data: monthlyAvg,
+        borderColor: '#d97706', borderWidth: 2, borderDash: [5, 3],
+        pointRadius: 0, fill: false, tension: .3 }
+    ]},
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'top', align: 'end',
+        labels: { boxWidth: 16, boxHeight: 2, usePointStyle: false } },
+      tooltip: { callbacks: { label: c => {
+        if (c.datasetIndex === 1) return '3-month avg: ' + fmt(c.raw);
+        const tag = c.dataIndex === peakIdx ? 'Peak — ' : c.dataIndex === lowIdx ? 'Lowest — ' : '';
+        return tag + fmt(c.raw);
+      } } },
+      datalabels: { display: (ctx) => ctx.datasetIndex === 0 && [peakIdx, lowIdx].includes(ctx.dataIndex),
+        color: (ctx) => extremeColor(ctx.dataIndex), font: { weight: '600', size: 11 },
+        align: (ctx) => ctx.dataIndex === peakIdx ? 'top' : 'bottom',
+        formatter: (v, ctx) => (ctx.dataIndex === peakIdx ? 'Peak ' : 'Low ') + fmt(v) } },
+    scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 18 } },
+      y: { grid, ticks: { callback: v => '$' + (v/1000) + 'k' } } } }
+});
+
+new Chart(cCategory, {
+  type: 'doughnut',
+  data: { labels: DATA.category_revenue.map(r => r.category_name),
+    datasets: [{ data: DATA.category_revenue.map(r => r.rev),
+      backgroundColor: ['#1a56db','#3b82f6','#60a5fa','#93c5fd','#bfdbfe','#1e3a8a'] }]},
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'right' },
+      tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.raw)} (${DATA.category_revenue[c.dataIndex].pct}%)` } },
+      datalabels: sharePctLabel } }
+});
+
+new Chart(cYearly, {
+  type: 'bar',
+  data: { labels: DATA.yearly_revenue.map(r => r.yr),
+    datasets: [{ label: 'Revenue', data: DATA.yearly_revenue.map(r => r.rev), backgroundColor: '#1a56db', borderRadius: 5 }]},
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: c => `${fmt(c.raw)} — ${DATA.yearly_revenue[c.dataIndex].orders.toLocaleString()} orders` } } },
+    scales: { x: { grid: { display: false } }, y: { grid, ticks: { callback: v => '$' + (v/1000000) + 'M' } } } }
+});
+
+new Chart(cPayment, {
+  type: 'doughnut',
+  data: { labels: DATA.payment_status.map(r => r.payment_status),
+    datasets: [{ data: DATA.payment_status.map(r => r.cnt),
+      backgroundColor: ['#059669','#d97706','#dc2626'] }]},
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom' },
+      tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw.toLocaleString()} (${DATA.payment_status[c.dataIndex].pct}%)` } },
+      datalabels: sharePctLabel } }
+});
+
+new Chart(cOrder, {
+  type: 'doughnut',
+  data: { labels: DATA.order_status.map(r => r.order_status),
+    datasets: [{ data: DATA.order_status.map(r => r.cnt),
+      backgroundColor: ['#059669','#1a56db','#d97706','#dc2626','#9ca3af'] }]},
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom' },
+      tooltip: { callbacks: { label: c => ` ${c.label}: ${c.raw.toLocaleString()} (${DATA.order_status[c.dataIndex].pct}%)` } },
+      datalabels: sharePctLabel } }
+});
+
+new Chart(cShipping, {
+  type: 'bar',
+  data: { labels: DATA.shipping.map(r => r.provider),
+    datasets: [
+      { label: 'Delay rate %', data: DATA.shipping.map(r => r.delay_pct), backgroundColor: '#dc2626', borderRadius: 5 },
+      { label: 'Delivered rate %', data: DATA.shipping.map(r => r.delivered_pct), backgroundColor: '#059669', borderRadius: 5 }]},
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom' } },
+    scales: { x: { grid: { display: false } }, y: { grid, max: 100, ticks: { callback: v => v + '%' } } } }
+});
+
+new Chart(cReturns, {
+  type: 'bar',
+  data: { labels: DATA.returns_by_category.map(r => r.category_name),
+    datasets: [{ label: 'Return rate %', data: DATA.returns_by_category.map(r => r.return_pct),
+      backgroundColor: '#d97706', borderRadius: 5 }]},
+  options: { responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false },
+      tooltip: { callbacks: { label: c => `${c.raw}% of ${DATA.returns_by_category[c.dataIndex].units_sold.toLocaleString()} units sold` } } },
+    scales: { x: { grid: { display: false } }, y: { grid, ticks: { callback: v => v + '%' } } } }
+});
+</script>
+</body>
+</html>
