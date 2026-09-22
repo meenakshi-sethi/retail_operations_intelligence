@@ -14,7 +14,11 @@ An end-to-end business health analysis of an e-commerce operation: 4.5 years of 
 
 **Why it matters:** revenue is concentrated in one category while operational friction (returns, delays, payment failures) erodes it — a classic profile where fixing operations beats chasing new sales.
 
-**What I'd recommend:** (1) investigate root causes for the top returned products, (2) renegotiate or rebalance volume away from the worst-performing shipping providers on delay rate, (3) run a reactivation campaign targeting the 212 never-purchased customers, and (4) set up automated restock triggers off the stock-alert view.
+**What I'd recommend:** 
+(1) investigate root causes for the top returned products, 
+(2) renegotiate or rebalance volume away from the worst-performing shipping providers on delay rate, 
+(3) run a reactivation campaign targeting the 212 never-purchased customers, and 
+(4) set up automated restock triggers off the stock-alert view.
 
 ---
 
