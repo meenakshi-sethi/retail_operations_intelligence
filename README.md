@@ -1,6 +1,6 @@
 # Retail Operations Intelligence: Sales, Returns & Inventory
 
-**SQL analytics project — PostgreSQL** | [View the interactive report](report.html)
+**SQL analytics project — PostgreSQL** | [View the interactive report](https://meenakshi-sethi.github.io/retail_operations_intelligence/report.html)
 
 An end-to-end business health analysis of an e-commerce operation: 4.5 years of transaction data (Jan 2020 – Jul 2024) across a 9-table relational schema — orders, payments, shipments, returns, and inventory — turned into the KPIs a leadership team actually needs, plus an automated inventory procedure that keeps stock in sync with sales.
 
