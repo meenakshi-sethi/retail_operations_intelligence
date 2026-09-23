@@ -4,72 +4,172 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Retail Operations Intelligence — Sales, Returns & Inventory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <style>
   :root {
-    --bg: #f6f7f9; --surface: #ffffff; --border: #e5e7eb;
-    --text: #111827; --muted: #6b7280;
+    --bg: #f6f4ef; --surface: #ffffff; --border: #e7e3d8;
+    --text: #201d16; --muted: #746f61;
     --primary: #1a56db; --primary-soft: #e8effc;
     --neg: #dc2626; --pos: #059669; --warn: #d97706;
+    --shadow-sm: 0 1px 2px rgba(32,29,22,.05);
+    --shadow-md: 0 10px 24px -12px rgba(32,29,22,.16), 0 1px 2px rgba(32,29,22,.05);
+    --radius: 16px;
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    /* one accent hue per section — the color is the wayfinding signal, not decoration */
+    --acc-revenue: #1a56db; --acc-payments: #0891b2; --acc-shipping: #d97706;
+    --acc-returns: #e11d48; --acc-products: #7c3aed; --acc-customers: #059669;
+    --acc-inventory: #4f46e5; --acc-data: #475569;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', -apple-system, sans-serif; background: var(--bg); color: var(--text); }
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 24px 20px 60px; }
-  header.hero { background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: #fff;
-    border-radius: 14px; padding: 36px 32px; margin-bottom: 24px; }
-  header.hero h1 { font-size: 26px; font-weight: 700; letter-spacing: .2px; }
-  header.hero p { margin-top: 8px; color: #c7d2fe; font-size: 14px; line-height: 1.6; max-width: 720px; }
-  header.hero .tag { display: inline-block; margin-top: 14px; background: rgba(255,255,255,.14);
-    border: 1px solid rgba(255,255,255,.25); padding: 4px 12px; border-radius: 999px; font-size: 12px; }
-  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 24px; }
-  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
-  .kpi .label { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
-  .kpi .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
-  .kpi .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  html { background: var(--bg); font-size: 17px; }
+  body { font-family: var(--font-body); color: var(--text); -webkit-font-smoothing: antialiased;
+    background:
+      radial-gradient(1000px 560px at 10% -10%, rgba(26,86,219,.11), transparent 62%),
+      radial-gradient(760px 480px at 98% 12%, rgba(217,119,6,.10), transparent 58%),
+      radial-gradient(680px 460px at 50% 100%, rgba(124,58,237,.07), transparent 60%),
+      var(--bg);
+    background-attachment: fixed; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1, h2, h3 { font-family: var(--font-display); }
+
+  header.hero { position: relative; overflow: hidden;
+    background: linear-gradient(135deg, #0b1229 0%, #17306e 55%, #1e3a8a 100%); color: #fff;
+    border-radius: var(--radius); padding: 40px 36px; margin-bottom: 28px; box-shadow: var(--shadow-md); }
+  header.hero::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(560px 280px at 88% -20%, rgba(99,141,255,.35), transparent 70%); }
+  header.hero .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase;
+    color: #93c5fd; margin-bottom: 10px; }
+  header.hero h1 { font-size: 32px; font-weight: 700; letter-spacing: -.2px; line-height: 1.25; max-width: 780px; }
+  header.hero p { margin-top: 12px; color: #c7d2fe; font-size: 15.5px; line-height: 1.65; max-width: 720px; }
+  header.hero .tag { display: inline-block; margin-top: 16px; background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.22); padding: 6px 15px; border-radius: 999px; font-size: 13px;
+    letter-spacing: .2px; backdrop-filter: blur(2px); }
+
+  nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 26px; }
+  nav a { font-size: 13.5px; font-weight: 600; text-decoration: none; color: var(--nav-c, var(--primary));
+    background: var(--surface); border: 1px solid var(--border); padding: 7px 15px; border-radius: 999px;
+    box-shadow: var(--shadow-sm); transition: background .15s ease, border-color .15s ease, transform .15s ease; }
+  nav a:hover { background: color-mix(in srgb, var(--nav-c, var(--primary)) 12%, white); border-color: color-mix(in srgb, var(--nav-c, var(--primary)) 35%, white); transform: translateY(-1px); }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(195px, 1fr)); gap: 14px; margin-bottom: 28px; }
+  .kpi { position: relative; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px 18px 16px 20px; box-shadow: var(--shadow-sm);
+    transition: box-shadow .15s ease, transform .15s ease; overflow: hidden; }
+  .kpi:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .kpi::before { content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px;
+    border-radius: 3px; background: var(--primary); opacity: .55; }
+  .kpi.alert::before { background: var(--neg); opacity: .8; }
+  .kpi.good::before { background: var(--pos); opacity: .8; }
+  .kpi .label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); }
+  .kpi .value { font-family: var(--font-mono); font-size: 21px; font-weight: 600; margin-top: 6px;
+    font-variant-numeric: tabular-nums; letter-spacing: -.3px; overflow-wrap: break-word; }
+  .kpi .sub { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
   .kpi.alert .value { color: var(--neg); }
   .kpi.good .value { color: var(--pos); }
-  section.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-    padding: 22px; margin-bottom: 20px; }
-  section.card h2 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-  section.card p.desc { font-size: 13px; color: var(--muted); margin-bottom: 16px; line-height: 1.5; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  section.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 28px 30px; margin-bottom: 22px; box-shadow: var(--shadow-sm); }
+  section.card h2 { position: relative; padding-left: 15px; font-size: 20px; font-weight: 700;
+    letter-spacing: -.2px; margin-bottom: 6px; }
+  section.card h2::before { content: ''; position: absolute; left: 0; top: 3px; bottom: 3px; width: 4px;
+    border-radius: 3px; background: var(--acc, var(--primary)); }
+  section.card p.desc { font-size: 14.5px; color: var(--muted); margin-bottom: 18px; line-height: 1.55; padding-left: 15px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
   @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
   .chartbox { position: relative; height: 300px; }
   .chartbox.tall { height: 360px; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { text-align: left; padding: 8px 10px; background: var(--primary-soft); color: #1e3a8a;
-    font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
-  td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+
+  table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; }
+  th { text-align: left; padding: 10px 12px; background: var(--primary-soft); color: #1e3a8a;
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+  th:first-child { border-top-left-radius: 8px; }
+  th:last-child { border-top-right-radius: 8px; }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tbody tr:nth-child(even) { background: #faf9f6; }
+  tbody tr:hover { background: var(--primary-soft); }
   tr:last-child td { border-bottom: none; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 13px; }
+
+  .badge { display: inline-block; padding: 3px 11px; border-radius: 999px; font-size: 12px; font-weight: 700; }
   .badge.red { background: #fee2e2; color: #991b1b; }
   .badge.green { background: #d1fae5; color: #065f46; }
   .badge.amber { background: #fef3c7; color: #92400e; }
-  .insight { background: var(--primary-soft); border-left: 3px solid var(--primary);
-    padding: 12px 16px; border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.6; margin-top: 16px; }
-  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 30px; line-height: 1.7; }
-  nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
-  nav a { font-size: 12px; text-decoration: none; color: var(--primary); background: var(--surface);
-    border: 1px solid var(--border); padding: 6px 12px; border-radius: 999px; }
+
+  .insight { display: flex; gap: 12px; align-items: flex-start; background: color-mix(in srgb, var(--acc, var(--primary)) 8%, var(--primary-soft));
+    border-left: 3px solid var(--acc, var(--primary)); padding: 14px 18px; border-radius: 10px; font-size: 14px;
+    line-height: 1.6; margin-top: 18px; }
+  .insight::before { content: 'i'; flex: none; width: 19px; height: 19px; border-radius: 50%;
+    background: var(--acc, var(--primary)); color: #fff; font-size: 12px; font-weight: 700; font-style: normal;
+    display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+
+  /* per-section accent — sets --acc for the h2 bar + insight box, and --nav-c for its nav pill */
+  #revenue, [href="#revenue"] { --acc: var(--acc-revenue); --nav-c: var(--acc-revenue); }
+  #payments, [href="#payments"] { --acc: var(--acc-payments); --nav-c: var(--acc-payments); }
+  #shipping, [href="#shipping"] { --acc: var(--acc-shipping); --nav-c: var(--acc-shipping); }
+  #returns, [href="#returns"] { --acc: var(--acc-returns); --nav-c: var(--acc-returns); }
+  #products, [href="#products"] { --acc: var(--acc-products); --nav-c: var(--acc-products); }
+  #customers, [href="#customers"] { --acc: var(--acc-customers); --nav-c: var(--acc-customers); }
+  #inventory, [href="#inventory"] { --acc: var(--acc-inventory); --nav-c: var(--acc-inventory); }
+  #datamodel, [href="#datamodel"] { --acc: var(--acc-data); --nav-c: var(--acc-data); }
+
+  .play-row { display: flex; align-items: center; gap: 12px; margin: -6px 0 14px 15px; }
+  .play-btn { display: inline-flex; align-items: center; gap: 7px; font: inherit; font-size: 13px; font-weight: 700;
+    color: #fff; background: var(--acc-revenue); border: none; padding: 8px 16px; border-radius: 999px;
+    cursor: pointer; box-shadow: var(--shadow-sm); transition: transform .15s ease, opacity .15s ease; }
+  .play-btn:hover:not(:disabled) { transform: translateY(-1px); }
+  .play-btn:disabled { opacity: .55; cursor: default; }
+  .play-readout { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); min-height: 1.4em; }
+
+  .erd-wrap { display: flex; justify-content: center; padding: 6px 0 4px; }
+  .erd-wrap svg { max-width: 100%; height: auto; }
+  figure.erd { margin-top: 4px; }
+  figure.erd figcaption { font-size: 12.5px; color: var(--muted); text-align: center; margin-top: 10px; line-height: 1.5; }
+
+  .legend-row { display: flex; gap: 18px; flex-wrap: wrap; margin: 4px 0 4px 15px; font-size: 12.5px; color: var(--muted); }
+  .legend-row span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend-row .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .detail-panel { margin: 16px 15px 0; border-top: 1px solid var(--border); padding-top: 14px;
+    font-size: 13.5px; line-height: 1.6; min-height: 66px; }
+  .detail-panel .placeholder { color: var(--muted); }
+  .detail-panel b.tag { display: inline-block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .5px;
+    padding: 2px 9px; border-radius: 999px; margin-right: 8px; color: #fff; }
+
+  #actions, [href="#actions"] { --acc: #be185d; --nav-c: #be185d; }
+  .chartbox.radar-box { padding: 34px 40px; }
+  .quad-tag { position: absolute; font-size: 11px; font-weight: 700; letter-spacing: .3px;
+    text-transform: uppercase; padding: 4px 10px; border-radius: 6px; color: #fff; z-index: 2; }
+  .qt-topright { top: 6px; right: 6px; background: #be185d; }
+  .qt-topleft { top: 6px; left: 6px; background: #1a56db; }
+  .qt-botright { bottom: 6px; right: 6px; background: #b45309; }
+  .qt-botleft { bottom: 6px; left: 6px; background: #52525b; }
+
+  footer { text-align: center; color: var(--muted); font-size: 13px; margin-top: 36px; padding-top: 20px;
+    border-top: 1px solid var(--border); line-height: 1.8; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
 <header class="hero">
+  <div class="eyebrow">SQL analytics &middot; portfolio project</div>
   <h1>Retail Operations Intelligence: Sales, Returns &amp; Inventory</h1>
-  <p>End-to-end business health analysis of an e-commerce operation — 2020-01-01 00:00:00 to 2024-07-30 00:00:00 across a 9-table
-  relational schema (orders, payments, shipments, returns, inventory). Every figure below was computed with SQL
+  <p>End-to-end business health analysis of an e-commerce operation, January 2020 through July 2024, across a nine-table
+  relational schema — orders, payments, shipments, returns, inventory. Every figure below was computed with SQL
   (PostgreSQL) and cross-verified against an independent implementation.</p>
   <span class="tag">SQL &middot; PostgreSQL &middot; 21,629 orders &middot; ~88,500 records</span>
+  <a class="tag" href="https://github.com/meenakshi-sethi/retail_operations_intelligence" style="margin-left:8px;text-decoration:none;color:#fff">View source on GitHub &rarr;</a>
 </header>
 
 <nav>
   <a href="#revenue">Revenue</a><a href="#payments">Payments</a><a href="#shipping">Shipping</a>
   <a href="#returns">Returns</a><a href="#products">Products</a><a href="#customers">Customers</a>
-  <a href="#inventory">Inventory</a>
+  <a href="#inventory">Inventory</a><a href="#actions">Action Radar</a><a href="#datamodel">Data model</a>
 </nav>
 
 <div class="kpis">
@@ -84,6 +184,10 @@
 <section class="card" id="revenue">
   <h2>Revenue trend</h2>
   <p class="desc">Monthly revenue across the full 4.5-year history. 2024 covers January–July only (partial year).</p>
+  <div class="play-row">
+    <button class="play-btn" id="playBtn" type="button">&#9654; Play the trend</button>
+    <span class="play-readout" id="playReadout"></span>
+  </div>
   <div class="chartbox tall"><canvas id="cMonthly"></canvas></div>
   <div class="insight"><b>Finding:</b> revenue is stable-to-growing through 2023, then drops sharply in 2024 —
   the partial year (Jan–Jul only) plus a near-total collapse from March onward, well beyond what a partial year explains.</div>
@@ -164,10 +268,112 @@
     <th>Product</th><th class="num">Stock left</th><th class="num">Warehouse</th><th class="num">Last restock</th></tr></thead><tbody></tbody></table>
 </section>
 
+<section class="card" id="actions">
+  <h2>Action Radar</h2>
+  <p class="desc">Every finding above, plotted by business impact (vertical) and how urgently it needs attention
+  (horizontal). Bubble size = revenue at stake. Click a bubble for the recommended action.</p>
+  <div class="chartbox radar-box" style="height:440px">
+    <span class="quad-tag qt-topright">Act now</span>
+    <span class="quad-tag qt-topleft">Plan for it</span>
+    <span class="quad-tag qt-botright">Quick fix</span>
+    <span class="quad-tag qt-botleft">Low priority</span>
+    <canvas id="cRadar"></canvas>
+  </div>
+  <div class="legend-row">
+    <span><i class="dot" style="background:#1a56db"></i> Revenue</span>
+    <span><i class="dot" style="background:#d97706"></i> Operations</span>
+    <span><i class="dot" style="background:#059669"></i> Growth</span>
+  </div>
+  <div class="detail-panel" id="radarDetail">
+    <span class="placeholder">Click any bubble above to see why it matters and what to do about it.</span>
+  </div>
+</section>
+
+<section class="card" id="datamodel">
+  <h2>Data model</h2>
+  <p class="desc">The nine-table relational schema every query in this report runs against.</p>
+  <div class="erd-wrap">
+  <figure class="erd">
+    <svg viewBox="0 0 980 500" role="img" aria-label="Nine-table schema: category feeds products, which feeds order_items and inventory; customers and sellers feed orders, which feeds order_items, payments, and shippings.">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+
+      <!-- edges (drawn first, under the boxes) -->
+      <g fill="none" stroke="currentColor" stroke-opacity=".45" stroke-width="1.5">
+        <path d="M120,80 L120,160" marker-end="url(#arrow)"/>
+        <path d="M310,80 L230,160" marker-end="url(#arrow)"/>
+        <path d="M840,80 L830,160" marker-end="url(#arrow)"/>
+        <path d="M230,210 L470,290" marker-end="url(#arrow)"/>
+        <path d="M790,210 L550,290" marker-end="url(#arrow)"/>
+        <path d="M830,210 L830,290" marker-end="url(#arrow)"/>
+        <path d="M180,210 L135,420" marker-end="url(#arrow)"/>
+        <path d="M240,210 L320,420" marker-end="url(#arrow)"/>
+      </g>
+
+      <g font-family="IBM Plex Mono, monospace" font-size="11" font-weight="500" fill="currentColor" fill-opacity=".65">
+        <text x="90" y="125">customer_id</text>
+        <text x="255" y="115" text-anchor="end">seller_id</text>
+        <text x="845" y="125">category_id</text>
+        <text x="330" y="255">order_id</text>
+        <text x="680" y="255" text-anchor="end">product_id</text>
+        <text x="845" y="255">product_id</text>
+        <text x="130" y="330">order_id</text>
+        <text x="300" y="330" text-anchor="end">order_id</text>
+      </g>
+
+      <!-- tables: name in the body font, primary key in mono, hub tables (orders/products) outlined -->
+      <g fill="#ffffff" stroke="currentColor" stroke-opacity=".35">
+        <rect x="40" y="30" width="160" height="50" rx="8"/>
+        <rect x="230" y="30" width="160" height="50" rx="8"/>
+        <rect x="760" y="30" width="160" height="50" rx="8"/>
+        <rect x="420" y="290" width="180" height="50" rx="8"/>
+        <rect x="740" y="290" width="180" height="50" rx="8"/>
+        <rect x="60" y="420" width="150" height="50" rx="8"/>
+        <rect x="250" y="420" width="150" height="50" rx="8"/>
+      </g>
+      <g fill="#eef1f5" stroke="#475569" stroke-width="1.5">
+        <rect x="120" y="160" width="180" height="50" rx="8"/>
+        <rect x="740" y="160" width="180" height="50" rx="8"/>
+      </g>
+
+      <g text-anchor="middle" font-family="Inter, system-ui, sans-serif" font-weight="700" font-size="13" fill="currentColor">
+        <text x="120" y="52">customers</text>
+        <text x="310" y="52">sellers</text>
+        <text x="840" y="52">category</text>
+        <text x="210" y="182">orders</text>
+        <text x="830" y="182">products</text>
+        <text x="510" y="312">order_items</text>
+        <text x="830" y="312">inventory</text>
+        <text x="135" y="442">payments</text>
+        <text x="325" y="442">shippings</text>
+      </g>
+      <g text-anchor="middle" font-family="IBM Plex Mono, monospace" font-weight="500" font-size="11" fill="currentColor" fill-opacity=".6">
+        <text x="120" y="70">customer_id PK</text>
+        <text x="310" y="70">seller_id PK</text>
+        <text x="840" y="70">category_id PK</text>
+        <text x="210" y="200">order_id PK</text>
+        <text x="830" y="200">product_id PK</text>
+        <text x="510" y="330">order_item_id PK</text>
+        <text x="830" y="330">inventory_id PK</text>
+        <text x="135" y="460">payment_id PK</text>
+        <text x="325" y="460">shipping_id PK</text>
+      </g>
+    </svg>
+    <figcaption>orders and products (outlined) are the two hub tables — every business question in this
+    report is a join that starts from one of them. Arrows point from a lookup/parent table to the table
+    holding its foreign key.</figcaption>
+  </figure>
+  </div>
+</section>
+
 <footer>
   Retail Operations Intelligence &middot; SQL / PostgreSQL project by Meenakshi Sethi<br>
   Synthetic Amazon-like e-commerce dataset (~88,500 records, Jan 2020 – Jul 2024) &middot;
-  All figures computed with SQL and cross-verified &middot; Queries: <b>solutions.sql</b> in this repo
+  All figures computed with SQL and cross-verified &middot; Queries: <b>solutions.sql</b> in
+  <a href="https://github.com/meenakshi-sethi/retail_operations_intelligence" style="color:var(--primary);font-weight:600">this repo</a>
 </footer>
 </div>
 
@@ -219,13 +425,14 @@ const tbI = document.querySelector('#tStock tbody');
 DATA.stock_alerts.forEach(r => {
   tbI.insertAdjacentHTML('beforeend',
     `<tr><td>${r.product_name}</td><td class="num"><span class="badge red">${r.stock}</span></td>
-     <td class="num">${r.warehouse_id}</td><td class="num">${r.last_stock_date}</td></tr>`);
+     <td class="num">${r.warehouse_id}</td><td class="num">${r.last_stock_date.split(' ')[0]}</td></tr>`);
 });
 
 // ---- charts ----
 Chart.register(ChartDataLabels);
-Chart.defaults.font.family = "'Segoe UI', sans-serif";
-Chart.defaults.color = '#6b7280';
+Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+Chart.defaults.font.size = 13;
+Chart.defaults.color = '#746f61';
 // datalabels defaults to "on" for every chart once registered — opt it back out
 // globally, then turn it on explicitly only for the doughnut charts below.
 Chart.defaults.set('plugins.datalabels', { display: false });
@@ -248,7 +455,7 @@ const peakIdx = monthlyRev.indexOf(Math.max(...monthlyRev));
 const lowIdx = monthlyRev.indexOf(Math.min(...monthlyRev));
 const extremeColor = i => i === peakIdx ? '#059669' : i === lowIdx ? '#dc2626' : '#1a56db';
 
-new Chart(cMonthly, {
+const monthlyChart = new Chart(cMonthly, {
   type: 'line',
   data: { labels: DATA.monthly_trend.map(r => r.ym),
     datasets: [
@@ -278,16 +485,52 @@ new Chart(cMonthly, {
       datalabels: { display: (ctx) => ctx.datasetIndex === 0 && [peakIdx, lowIdx].includes(ctx.dataIndex),
         color: (ctx) => extremeColor(ctx.dataIndex), font: { weight: '600', size: 11 },
         align: (ctx) => ctx.dataIndex === peakIdx ? 'top' : 'bottom',
+        // clamp keeps the label inside the chart area instead of letting it run
+        // off the canvas edge when the extreme point sits near the last month
+        clamp: true,
         formatter: (v, ctx) => (ctx.dataIndex === peakIdx ? 'Peak ' : 'Low ') + fmt(v) } },
+    layout: { padding: { right: 12, top: 8 } },
     scales: { x: { grid: { display: false }, ticks: { maxTicksLimit: 18 } },
       y: { grid, ticks: { callback: v => '$' + (v/1000) + 'k' } } } }
+});
+
+// Play button: replays the trend month-by-month instead of dumping the whole
+// line at once — reveals the peak/low markers as playback reaches them.
+const playBtn = document.getElementById('playBtn');
+const playReadout = document.getElementById('playReadout');
+let playing = false;
+playBtn.addEventListener('click', () => {
+  if (playing) return;
+  playing = true;
+  const total = monthlyRev.length;
+  playBtn.disabled = true;
+  playBtn.innerHTML = '&#10074;&#10074; Playing…';
+  monthlyChart.data.datasets[0].data = new Array(total).fill(null);
+  monthlyChart.data.datasets[1].data = new Array(total).fill(null);
+  monthlyChart.update('none');
+  let i = 0;
+  const step = () => {
+    monthlyChart.data.datasets[0].data[i] = monthlyRev[i];
+    monthlyChart.data.datasets[1].data[i] = monthlyAvg[i];
+    monthlyChart.update();
+    playReadout.textContent = DATA.monthly_trend[i].ym + '  —  ' + fmt(monthlyRev[i]);
+    i++;
+    if (i < total) {
+      setTimeout(step, 80);
+    } else {
+      playing = false;
+      playBtn.disabled = false;
+      playBtn.innerHTML = '&#8635; Replay';
+    }
+  };
+  step();
 });
 
 new Chart(cCategory, {
   type: 'doughnut',
   data: { labels: DATA.category_revenue.map(r => r.category_name),
     datasets: [{ data: DATA.category_revenue.map(r => r.rev),
-      backgroundColor: ['#1a56db','#3b82f6','#60a5fa','#93c5fd','#bfdbfe','#1e3a8a'] }]},
+      backgroundColor: ['#1a56db','#0891b2','#7c3aed','#d97706','#e11d48','#059669'] }]},
   options: { responsive: true, maintainAspectRatio: false,
     plugins: { legend: { position: 'right' },
       tooltip: { callbacks: { label: c => ` ${c.label}: ${fmt(c.raw)} (${DATA.category_revenue[c.dataIndex].pct}%)` } },
@@ -346,6 +589,76 @@ new Chart(cReturns, {
     plugins: { legend: { display: false },
       tooltip: { callbacks: { label: c => `${c.raw}% of ${DATA.returns_by_category[c.dataIndex].units_sold.toLocaleString()} units sold` } } },
     scales: { x: { grid: { display: false } }, y: { grid, ticks: { callback: v => v + '%' } } } }
+});
+
+// ---- Action Radar: impact vs. urgency quadrant, synthesizing the findings above ----
+const RADAR_POINTS = [
+  { label: `Electronics = ${DATA.category_revenue[0].pct}% of revenue`, category: 'Revenue', impact: 9, urgency: 6, stake: 40,
+    why: 'Almost all revenue rides on one category. A supply, demand, or pricing shock in electronics hits the whole business, not one segment.',
+    action: 'Set a category-concentration target and track new-category revenue as its own KPI next quarter.' },
+  { label: '2024 revenue collapse (Mar–Jul)', category: 'Revenue', impact: 10, urgency: 10, stake: 45,
+    why: 'Revenue fell over 90% starting March 2024 — far more than the partial year explains. This looks like a data or operational break, not a demand problem.',
+    action: 'Investigate immediately: check for a data pipeline gap, a platform outage, or a real business event in March 2024.' },
+  { label: `${DATA.overall_delay_pct}% of shipments delayed`, category: 'Operations', impact: 7, urgency: 8, stake: 30,
+    why: 'Two in five shipments arrive later than 3 days, which drives returns, refunds, and customer churn.',
+    action: 'Audit FedEx (highest volume + highest delays) and renegotiate SLA terms or shift volume to a faster carrier.' },
+  { label: '13.4% return rate', category: 'Operations', impact: 6, urgency: 5, stake: 24,
+    why: 'Refund rate (13.1%) tracks the return rate almost exactly — returns are the main revenue leak, not payment failures.',
+    action: `Root-cause the top-returned electronics SKUs (${DATA.returns_by_category[0].return_pct}% return rate) — likely a product-quality or listing-accuracy issue.` },
+  { label: `${DATA.never_purchased} customers never purchased`, category: 'Growth', impact: 4, urgency: 3, stake: 12,
+    why: '24% of registered customers have never placed an order — an untapped, already-acquired audience.',
+    action: 'Launch a first-purchase incentive (discount or free shipping) targeted at this segment.' },
+  { label: 'Electronics has the highest return %', category: 'Operations', impact: 5, urgency: 4, stake: 16,
+    why: `The category driving ${DATA.category_revenue[0].pct}% of revenue also has the worst return rate (${DATA.returns_by_category[0].return_pct}%) — the concentration risk and the returns risk compound each other.`,
+    action: 'Prioritize QA review for the top 10 electronics SKUs by revenue before expanding the catalog further.' },
+];
+const RADAR_COLORS = { Revenue: '#1a56db', Operations: '#d97706', Growth: '#059669' };
+
+const quadrantBg = {
+  id: 'quadrantBg',
+  beforeDraw(chart) {
+    const { ctx, chartArea, scales } = chart;
+    if (!chartArea) return;
+    const xMid = scales.x.getPixelForValue(5);
+    const yMid = scales.y.getPixelForValue(5);
+    ctx.save();
+    ctx.fillStyle = 'rgba(190,24,93,0.05)';
+    ctx.fillRect(xMid, chartArea.top, chartArea.right - xMid, yMid - chartArea.top);
+    ctx.fillStyle = 'rgba(116,111,97,0.05)';
+    ctx.fillRect(chartArea.left, chartArea.top, xMid - chartArea.left, yMid - chartArea.top);
+    ctx.fillRect(xMid, yMid, chartArea.right - xMid, chartArea.bottom - yMid);
+    // quadrant names now live outside the canvas as HTML tags (.quad-tag) in the
+    // chartbox's padding gutter, so they can never end up hidden behind a bubble
+    ctx.restore();
+  }
+};
+
+new Chart(cRadar, {
+  type: 'bubble',
+  data: { datasets: [{
+    data: RADAR_POINTS.map(p => ({ x: p.urgency, y: p.impact, r: p.stake })),
+    backgroundColor: RADAR_POINTS.map(p => RADAR_COLORS[p.category] + 'cc'),
+    borderColor: RADAR_POINTS.map(p => RADAR_COLORS[p.category]), borderWidth: 2 }] },
+  options: { responsive: true, maintainAspectRatio: false,
+    onClick: (evt, els) => {
+      if (!els.length) return;
+      const p = RADAR_POINTS[els[0].index];
+      document.getElementById('radarDetail').innerHTML =
+        `<b class="tag" style="background:${RADAR_COLORS[p.category]}">${p.category}</b><b>${p.label}</b><br>
+         <span style="color:var(--muted)">Why it matters:</span> ${p.why}<br>
+         <span style="color:var(--muted)">Recommended action:</span> ${p.action}`;
+    },
+    plugins: { legend: { display: false },
+      tooltip: { callbacks: { title: items => RADAR_POINTS[items[0].dataIndex].label,
+        label: () => 'Click for the recommended action →' } },
+      datalabels: { display: true, color: '#201d16', font: { weight: '600', size: 11 }, anchor: 'end', align: 'top', offset: 4,
+        formatter: (v, ctx) => RADAR_POINTS[ctx.dataIndex].label.split(' ').slice(0, 3).join(' ') + '…' } },
+    scales: {
+      x: { min: 0, max: 11, title: { display: true, text: 'Urgency — how soon this needs action →' },
+           grid, ticks: { display: false } },
+      y: { min: 0, max: 11, title: { display: true, text: 'Business impact ↑' },
+           grid, ticks: { display: false } } } },
+  plugins: [quadrantBg]
 });
 </script>
 </body>
